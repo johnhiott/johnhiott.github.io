@@ -12,24 +12,18 @@ I had a friend tell me he needed a package manager that would generate a file th
 
 
 - Populate package list with already installed packages
-
-```bash
+```
 iap generate
 ```
-
 - Install/Remove packages from the CLI
-
-```bash
+```
 iap install {packagename}
-
 ```
 - Install all saved packages
-
-```bash
+```
 iap
 ```
 - Remove installed package
-
-```bash
+```
 iap remove {packagename}
 ```
