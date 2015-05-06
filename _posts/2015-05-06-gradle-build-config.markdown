@@ -84,6 +84,6 @@ Your build.gradle file should be checked into version control. To prevent having
 
 ## The End
 
-From package management to build configs, Gradle makes development a lot easier.  I recommend digging deeper and see what it is capable of doing.
+From package management to build configs, Gradle makes development a lot easier.  I recommend digging deeper to see what it is capable of doing.
 
 I have include a sample project on GitHub, check it out [here](https://github.com/johnhiott/gradleexample)
