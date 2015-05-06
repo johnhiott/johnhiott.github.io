@@ -12,7 +12,7 @@ However, I just wanted to share a few cool tidbits.
 
 
 ## Variables in your config file, BuildConfig
-Variables in your Gradle build file are useful because they allow you define their value for each build type.
+Variables in your Gradle build file are useful because they allow you to define their value for each build type.
 For example, if you do not want to send bug reports or you want to use a different API endpoint while you are developing.
 
 ```java
