@@ -12,3 +12,5 @@ github_username:  johnhiott
 # Build settings
 markdown: redcarpet
 extensions: [fenced_code_blocks]
+
+timezone: America/New_York
