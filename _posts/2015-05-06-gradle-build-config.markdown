@@ -53,8 +53,10 @@ android {
     ...
     signingConfigs {
         release {
-            storeFile file(System.env['KEY_PATH'])
-            storePassword System.env['STORE_PASSWORD']
+            //because Android studio does not read ENV vars, this if statement shuts up Android Studio.
+            if (System.getenv('KEY_PATH') != null) {
+                storeFile file(System.getenv('KEY_PATH'))
+            }            storePassword System.env['STORE_PASSWORD']
             keyAlias System.env['KEY_ALIAS']
             keyPassword System.env['KEY_PASSWORD']
         }
