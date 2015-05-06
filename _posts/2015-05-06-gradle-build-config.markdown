@@ -5,14 +5,13 @@ categories: android gradle build automation
 ---
 
 
-I am sure most all Android developers now know at least little bit about [Gradle](https://gradle.org/) these days.  After all, it is now apart of [Android Studio](http://developer.android.com/tools/studio/index.html).
-
+I am sure most Android developers are at least vaguely familiar with Gradle these days.
 However, I just wanted to share a few cool tidbits.
 
 
 
 ## Variables in your config file, BuildConfig
-Variables in your Gradle build file are useful because they allow you define their value for each build type.
+Variables in your Gradle build file are useful because they allow you to define their value for each build type.
 For example, if you do not want to send bug reports or you want to use a different API endpoint while you are developing.
 
 ```java
