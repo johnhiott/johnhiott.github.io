@@ -5,8 +5,7 @@ categories: android gradle build automation
 ---
 
 
-I am sure most all Android developers now know at least little bit about [Gradle](https://gradle.org/) these days.  After all, it is now apart of [Android Studio](http://developer.android.com/tools/studio/index.html).
-
+I am sure most Android developers are at least vaguely familiar with Gradle these days.
 However, I just wanted to share a few cool tidbits.
 
 
