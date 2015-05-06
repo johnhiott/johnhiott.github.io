@@ -10,4 +10,5 @@ twitter_username: johnhiott
 github_username:  johnhiott
 
 # Build settings
-markdown: kramdown
+markdown: redcarpet
+extensions: [fenced_code_blocks]
