@@ -4,7 +4,6 @@ title: About
 permalink: /about/
 ---
 
-- Founder @ [oolCay](http://oolcay.com)
 - Developer @ [Cardinal Solutions](http://www.cardinalsolutions.com/), previously @ [Passport](http://gopassport.com).
 - In my spare time, I enjoy working with Android, running, watching basketball and playing golf.
 
