@@ -4,14 +4,27 @@ title: About
 permalink: /about/
 ---
 
-- Developer @ [Cardinal Solutions](http://www.cardinalsolutions.com/), previously @ [Passport](http://gopassport.com).
-- I enjoy working with Android.
-- [Duke Basketball](http://www.goduke.com/SportSelect.dbml?SPID=1845) and [Tiger Woods](http://www.tigerwoods.com) fan.
-- I try to play golf.
+## Professional Experience
+- Mobile Developer @ [Cardinal Solutions](http://www.cardinalsolutions.com/)
+- Android Developer @ [Passport](http://gopassport.com)
 
-Development related shenanigans:
+## Talks
+- Android and Location @ Charlotte Android Developer Meetup
+- Chomecast Dev for Android @ Google I/O Extended CLT 2016
+- Chromecast Dev for Android @ Big Android BBQ 2016
+- Stetho for Android @ Charlotte Android Developer Meetup
+- Git @ Charlotte Android Developer Meetup
+- Android Architecture Components @ Charlotte GDG's Android Meetup
 
-- [Fitget](https://play.google.com/store/apps/details?id=com.hiott.fitbitwidget.fitbitwidget&hl=en), Fitbit widget for Android
-- [DarkSkyApi](https://github.com/johnhiott/DarkSkyApi), Android Client Wrapper for the [Dark Sky API](https://developer.forecast.io/docs/v2)
-- Frequent speaker @ [Charlotte Android Developer Meetup](www.meetup.com/Charlotte-Android-Developers/)
-- Everything else on [Github](http://github.com/johnhiott)
+## Projects
+ - [DarkSkyApi](https://github.com/johnhiott/DarkSkyApi), Android Client Wrapper for the [Dark Sky API](https://developer.forecast.io/docs/v2)
+ - Fitget - Fitbit widget for Android (no longer published)
+
+## Community
+- Charlotte Google Developer Group
+
+## Awards
+- [1st Place @ The Money Event Hackathon](http://johnhiott.com/android/hackaton/winner/vegas/mobile/2014/07/16/hackathon.html)
+
+## Personal
+- [Duke Basketball Fan](http://www.goduke.com/SportSelect.dbml?SPID=1845)
