@@ -8,7 +8,7 @@ permalink: /about/
 - Mobile Developer @ [Cardinal Solutions](http://www.cardinalsolutions.com/)
 - Android Developer @ [Passport](http://gopassport.com)
 
-### Talks
+### Speaking
 - Designing for Different Screen Sizes (Android) - Duke Energy IDEA Lab Conference
 - Android and Location @ Charlotte Android Developer Meetup
 - Chomecast Dev for Android @ Google I/O Extended CLT 2016
