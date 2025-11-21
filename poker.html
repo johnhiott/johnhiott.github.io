@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Sprint Planning Poker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .session-info {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .session-id {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .share-link {
+            background: white;
+            color: #667eea;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+
+        #joinModal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        #joinModal.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .modal-content h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+
+        .participants-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .participants-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .participants-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .participant {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .participant.voted {
+            background: #e3f2fd;
+            border: 2px solid #667eea;
+        }
+
+        .participant.revealed {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .participant-name {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .participant-vote {
+            font-size: 1.5rem;
+            font-weight: bold;
+            min-height: 30px;
+        }
+
+        .your-card-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .your-card-section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .selected-value {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #764ba2;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .selected-value.empty {
+            color: #ccc;
+            font-size: 1.2rem;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            position: relative;
+            aspect-ratio: 2/3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .card.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: translateY(-5px) scale(1.05);
+        }
+
+        .card.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 1.2rem;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .reveal-btn {
+            background: #4caf50;
+            color: white;
+        }
+
+        .reset-btn {
+            background: #764ba2;
+            color: white;
+        }
+
+        .stats {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .stats h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .stats-content {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .stat-item {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #764ba2;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .cards-grid {
+                grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+                gap: 10px;
+            }
+
+            .card {
+                padding: 15px 10px;
+                font-size: 1.5rem;
+            }
+
+            .participants-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="joinModal">
+        <div class="modal-content">
+            <h2>Join Planning Poker Session</h2>
+            <input type="text" id="nameInput" placeholder="Enter your name" autofocus>
+            <button onclick="joinSession()">Join Session</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>🎴 Multiplayer Planning Poker</h1>
+        
+        <div class="session-info">
+            <div class="session-id">Session: <span id="sessionId"></span></div>
+            <div style="font-size: 0.9rem;">Share this page URL with your team</div>
+            <div class="share-link" id="shareLink"></div>
+        </div>
+
+        <div class="participants-section">
+            <h2>Participants (<span id="participantCount">0</span>)</h2>
+            <div class="participants-grid" id="participantsGrid"></div>
+        </div>
+
+        <div class="your-card-section">
+            <h2>Your Vote</h2>
+            <div id="selectedValue" class="selected-value empty">
+                Select a card below
+            </div>
+        </div>
+
+        <div class="cards-grid" id="cardsGrid"></div>
+
+        <div class="actions">
+            <button id="revealBtn" class="reveal-btn" onclick="revealAllVotes()">Reveal All Votes</button>
+            <button id="resetBtn" class="reset-btn" onclick="newRound()">New Round</button>
+        </div>
+
+        <div class="stats" id="statsSection" style="display: none;">
+            <h3>Voting Results</h3>
+            <div class="stats-content">
+                <div class="stat-item">
+                    <div class="stat-label">Average</div>
+                    <div class="stat-value" id="avgValue">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Median</div>
+                    <div class="stat-value" id="medianValue">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Most Common</div>
+                    <div class="stat-value" id="modeValue">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const cardValues = ['0', '1', '2', '3', '5', '8', '13', '20', '40', '100', '?', '☕'];
+        
+        let sessionId = null;
+        let userId = null;
+        let userName = null;
+        let myVote = null;
+        let votesRevealed = false;
+
+        // Initialize session
+        function initSession() {
+            const urlParams = new URLSearchParams(window.location.search);
+            sessionId = urlParams.get('session') || generateSessionId();
+            
+            // Update URL if no session parameter
+            if (!urlParams.get('session')) {
+                window.history.replaceState({}, '', `?session=${sessionId}`);
+            }
+            
+            document.getElementById('sessionId').textContent = sessionId;
+            document.getElementById('shareLink').textContent = window.location.href;
+            
+            // Generate unique user ID
+            userId = 'user_' + Math.random().toString(36).substr(2, 9);
+            
+            // Show join modal
+            document.getElementById('joinModal').classList.remove('hidden');
+        }
+
+        function generateSessionId() {
+            return Math.random().toString(36).substr(2, 6).toUpperCase();
+        }
+
+        function joinSession() {
+            const nameInput = document.getElementById('nameInput');
+            userName = nameInput.value.trim();
+            
+            if (!userName) {
+                alert('Please enter your name');
+                return;
+            }
+            
+            document.getElementById('joinModal').classList.add('hidden');
+            
+            // Add user to session
+            addParticipant(userId, userName);
+            saveSession();
+            
+            // Start polling for updates
+            setInterval(loadSession, 1000);
+            
+            // Create cards
+            createCards();
+        }
+
+        function createCards() {
+            const cardsGrid = document.getElementById('cardsGrid');
+            cardsGrid.innerHTML = '';
+            
+            cardValues.forEach(value => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.textContent = value;
+                card.dataset.value = value;
+                card.addEventListener('click', () => selectCard(card, value));
+                cardsGrid.appendChild(card);
+            });
+        }
+
+        function selectCard(cardElement, value) {
+            if (votesRevealed) return;
+            
+            // Remove previous selection
+            document.querySelectorAll('.card').forEach(card => {
+                card.classList.remove('selected');
+            });
+
+            // Select new card
+            cardElement.classList.add('selected');
+            myVote = value;
+
+            // Update display
+            document.getElementById('selectedValue').textContent = value;
+            document.getElementById('selectedValue').classList.remove('empty');
+            
+            // Save vote
+            updateMyVote(value);
+            saveSession();
+        }
+
+        function revealAllVotes() {
+            votesRevealed = true;
+            const session = getSession();
+            session.revealed = true;
+            setSession(session);
+            loadSession();
+            calculateStats();
+        }
+
+        function newRound() {
+            // Reset session
+            const session = getSession();
+            session.revealed = false;
+            session.participants.forEach(p => {
+                p.vote = null;
+            });
+            setSession(session);
+            
+            // Reset UI
+            votesRevealed = false;
+            myVote = null;
+            document.querySelectorAll('.card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.getElementById('selectedValue').textContent = 'Select a card below';
+            document.getElementById('selectedValue').classList.add('empty');
+            document.getElementById('statsSection').style.display = 'none';
+            
+            loadSession();
+        }
+
+        function addParticipant(id, name) {
+            const session = getSession();
+            if (!session.participants.find(p => p.id === id)) {
+                session.participants.push({
+                    id: id,
+                    name: name,
+                    vote: null
+                });
+                setSession(session);
+            }
+        }
+
+        function updateMyVote(vote) {
+            const session = getSession();
+            const participant = session.participants.find(p => p.id === userId);
+            if (participant) {
+                participant.vote = vote;
+                setSession(session);
+            }
+        }
+
+        function loadSession() {
+            const session = getSession();
+            votesRevealed = session.revealed || false;
+            
+            // Update participants display
+            const participantsGrid = document.getElementById('participantsGrid');
+            participantsGrid.innerHTML = '';
+            
+            session.participants.forEach(participant => {
+                const div = document.createElement('div');
+                div.className = 'participant';
+                
+                if (participant.vote) {
+                    div.classList.add('voted');
+                }
+                
+                if (votesRevealed && participant.vote) {
+                    div.classList.add('revealed');
+                }
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'participant-name';
+                nameDiv.textContent = participant.name;
+                
+                const voteDiv = document.createElement('div');
+                voteDiv.className = 'participant-vote';
+                
+                if (votesRevealed && participant.vote) {
+                    voteDiv.textContent = participant.vote;
+                } else if (participant.vote) {
+                    voteDiv.textContent = '🎴';
+                } else {
+                    voteDiv.textContent = '⏳';
+                }
+                
+                div.appendChild(nameDiv);
+                div.appendChild(voteDiv);
+                participantsGrid.appendChild(div);
+            });
+            
+            document.getElementById('participantCount').textContent = session.participants.length;
+            
+            // Update my vote if revealed
+            if (votesRevealed) {
+                const myParticipant = session.participants.find(p => p.id === userId);
+                if (myParticipant && myParticipant.vote) {
+                    document.getElementById('selectedValue').textContent = myParticipant.vote;
+                }
+            }
+        }
+
+        function calculateStats() {
+            const session = getSession();
+            const numericVotes = session.participants
+                .map(p => p.vote)
+                .filter(v => v && !isNaN(v))
+                .map(v => parseFloat(v))
+                .sort((a, b) => a - b);
+            
+            if (numericVotes.length === 0) {
+                document.getElementById('statsSection').style.display = 'none';
+                return;
+            }
+            
+            // Calculate average
+            const avg = numericVotes.reduce((a, b) => a + b, 0) / numericVotes.length;
+            document.getElementById('avgValue').textContent = avg.toFixed(1);
+            
+            // Calculate median
+            const mid = Math.floor(numericVotes.length / 2);
+            const median = numericVotes.length % 2 === 0
+                ? (numericVotes[mid - 1] + numericVotes[mid]) / 2
+                : numericVotes[mid];
+            document.getElementById('medianValue').textContent = median;
+            
+            // Calculate mode
+            const frequency = {};
+            let maxFreq = 0;
+            let mode = numericVotes[0];
+            
+            numericVotes.forEach(vote => {
+                frequency[vote] = (frequency[vote] || 0) + 1;
+                if (frequency[vote] > maxFreq) {
+                    maxFreq = frequency[vote];
+                    mode = vote;
+                }
+            });
+            
+            document.getElementById('modeValue').textContent = mode;
+            document.getElementById('statsSection').style.display = 'block';
+        }
+
+        // Session storage functions
+        function getSession() {
+            const key = `poker_session_${sessionId}`;
+            const data = localStorage.getItem(key);
+            if (data) {
+                return JSON.parse(data);
+            }
+            return {
+                id: sessionId,
+                participants: [],
+                revealed: false
+            };
+        }
+
+        function setSession(session) {
+            const key = `poker_session_${sessionId}`;
+            localStorage.setItem(key, JSON.stringify(session));
+        }
+
+        function saveSession() {
+            // Session is saved in real-time by other functions
+        }
+
+        // Initialize on load
+        initSession();
+    </script>
+</body>
+</html>
