@@ -58,10 +58,15 @@
             font-size: 0.9rem;
             word-break: break-all;
             margin: 10px 0;
+            cursor: pointer;
+        }
+
+        .share-link:hover {
+            background: #f0f0f0;
         }
 
         .connection-status {
-            padding: 10px;
+            padding: 8px;
             border-radius: 5px;
             margin-top: 10px;
             font-size: 0.9rem;
@@ -75,7 +80,7 @@
             background: #ff9800;
         }
 
-        .connection-status.disconnected {
+        .connection-status.error {
             background: #f44336;
         }
 
@@ -243,6 +248,11 @@
             font-size: 1.2rem;
         }
 
+        .card.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
         .actions {
             display: flex;
             gap: 15px;
@@ -304,7 +314,7 @@
 
         .stats-content {
             display: flex;
-            justify-space-around;
+            justify-content: space-around;
             flex-wrap: wrap;
             gap: 20px;
         }
@@ -362,7 +372,7 @@
         <div class="session-info">
             <div class="session-id">Room: <span id="sessionId"></span></div>
             <div style="font-size: 0.9rem;">Share this URL with your team</div>
-            <div class="share-link" id="shareLink"></div>
+            <div class="share-link" id="shareLink" onclick="copyLink()" title="Click to copy"></div>
             <div class="connection-status connecting" id="connectionStatus">Connecting...</div>
         </div>
 
@@ -404,8 +414,28 @@
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
     <script>
+        // ============================================
+        // FIREBASE CONFIGURATION
+        // ============================================
+        // REPLACE THIS WITH YOUR FIREBASE CONFIG
+        // Get it from: Firebase Console > Project Settings > General > Your apps > SDK setup and configuration
+ const firebaseConfig = {
+    apiKey: "AIzaSyBWarz44UAvVHQD0B5AGNmuUrkLjWLgzLs",
+    authDomain: "poker-3f74a.firebaseapp.com",
+    databaseURL: "https://poker-3f74a-default-rtdb.firebaseio.com",
+    projectId: "poker-3f74a",
+    storageBucket: "poker-3f74a.firebasestorage.app",
+    messagingSenderId: "1002846324378",
+    appId: "1:1002846324378:web:47fdb48999e03f17dc0123",
+    measurementId: "G-F2TPLLBDEZ"
+  };
+        // ============================================
+
         const cardValues = ['0', '1', '2', '3', '5', '8', '13', '20', '40', '100', '?', '☕'];
         
         let roomId = null;
@@ -413,34 +443,44 @@
         let userName = null;
         let myVote = null;
         let votesRevealed = false;
-        let peer = null;
-        let connections = {};
-        let participants = {};
-        let isHost = false;
+        let database = null;
+        let roomRef = null;
 
-        // Initialize
         function initSession() {
             const urlParams = new URLSearchParams(window.location.search);
             roomId = urlParams.get('room') || generateRoomId();
             
             if (!urlParams.get('room')) {
                 window.history.replaceState({}, '', `?room=${roomId}`);
-                isHost = true;
             }
             
             document.getElementById('sessionId').textContent = roomId;
             document.getElementById('shareLink').textContent = window.location.href;
             
-            userId = 'user_' + Math.random().toString(36).substr(2, 9);
+            userId = 'user_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
             
             document.getElementById('joinModal').classList.remove('hidden');
+            document.getElementById('nameInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') joinSession();
+            });
+
+            // Initialize Firebase
+            try {
+                firebase.initializeApp(firebaseConfig);
+                database = firebase.database();
+                updateConnectionStatus('connecting', 'Connecting to Firebase...');
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                updateConnectionStatus('error', 'Firebase not configured. See console for setup instructions.');
+                alert('Firebase is not configured! Please follow the setup instructions in FIREBASE_SETUP.md');
+            }
         }
 
         function generateRoomId() {
             return Math.random().toString(36).substr(2, 6).toUpperCase();
         }
 
-        function joinSession() {
+        async function joinSession() {
             const nameInput = document.getElementById('nameInput');
             userName = nameInput.value.trim();
             
@@ -448,156 +488,59 @@
                 alert('Please enter your name');
                 return;
             }
+
+            if (!database) {
+                alert('Firebase is not configured! Please check the setup instructions.');
+                return;
+            }
             
             document.getElementById('joinModal').classList.add('hidden');
             
-            // Initialize PeerJS
-            const peerId = `poker-${roomId}-${userId}`;
-            peer = new Peer(peerId, {
-                config: {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:global.stun.twilio.com:3478' }
-                    ]
-                }
+            // Setup Firebase references
+            roomRef = database.ref('rooms/' + roomId);
+            const participantRef = roomRef.child('participants/' + userId);
+            const revealedRef = roomRef.child('revealed');
+            
+            // Add participant
+            await participantRef.set({
+                name: userName,
+                vote: null,
+                joinedAt: firebase.database.ServerValue.TIMESTAMP
             });
 
-            peer.on('open', (id) => {
-                updateConnectionStatus('connected', 'Connected to network');
-                participants[userId] = { id: userId, name: userName, vote: null };
-                updateUI();
-                
-                // Connect to all existing peers in the room
-                discoverPeers();
-                createCards();
-            });
-
-            peer.on('connection', (conn) => {
-                handleConnection(conn);
-            });
-
-            peer.on('error', (err) => {
-                console.error('Peer error:', err);
-                updateConnectionStatus('disconnected', 'Connection error');
-            });
-        }
-
-        function discoverPeers() {
-            // In a real app, you'd use a signaling server
-            // For demo, we'll use the room ID to connect
-            const roomKey = `poker_room_${roomId}`;
+            // Set up presence (remove participant when disconnected)
+            participantRef.onDisconnect().remove();
             
-            // Store our peer ID
-            const existingPeers = JSON.parse(localStorage.getItem(roomKey) || '[]');
-            if (!existingPeers.includes(peer.id)) {
-                existingPeers.push(peer.id);
-                localStorage.setItem(roomKey, JSON.stringify(existingPeers));
-            }
-            
-            // Connect to existing peers
-            existingPeers.forEach(peerId => {
-                if (peerId !== peer.id) {
-                    connectToPeer(peerId);
-                }
+            // Listen for participants changes
+            roomRef.child('participants').on('value', (snapshot) => {
+                const participants = snapshot.val() || {};
+                updateParticipantsUI(participants);
             });
             
-            // Clean up old peer IDs periodically
-            setTimeout(() => {
-                const currentPeers = Object.keys(connections).map(id => connections[id].peer);
-                currentPeers.push(peer.id);
-                localStorage.setItem(roomKey, JSON.stringify(currentPeers));
-            }, 2000);
-        }
-
-        function connectToPeer(peerId) {
-            if (connections[peerId]) return;
-            
-            const conn = peer.connect(peerId, { reliable: true });
-            handleConnection(conn);
-        }
-
-        function handleConnection(conn) {
-            connections[conn.peer] = conn;
-            
-            conn.on('open', () => {
-                // Send our participant info
-                conn.send({
-                    type: 'join',
-                    participant: participants[userId]
-                });
-                
-                // Send current state if we're host
-                if (isHost) {
-                    conn.send({
-                        type: 'state',
-                        participants: participants,
-                        revealed: votesRevealed
-                    });
-                }
-            });
-            
-            conn.on('data', (data) => {
-                handleMessage(data, conn);
-            });
-            
-            conn.on('close', () => {
-                const disconnectedId = Object.keys(participants).find(id => 
-                    connections[conn.peer] && participants[id]
-                );
-                if (disconnectedId) {
-                    delete participants[disconnectedId];
-                    updateUI();
-                }
-                delete connections[conn.peer];
-            });
-        }
-
-        function handleMessage(data, conn) {
-            switch(data.type) {
-                case 'join':
-                    participants[data.participant.id] = data.participant;
-                    updateUI();
-                    // Broadcast to others
-                    broadcast(data, conn.peer);
-                    break;
-                    
-                case 'vote':
-                    if (participants[data.userId]) {
-                        participants[data.userId].vote = data.vote;
-                        updateUI();
-                    }
-                    broadcast(data, conn.peer);
-                    break;
-                    
-                case 'reveal':
-                    votesRevealed = true;
-                    updateUI();
+            // Listen for revealed changes
+            revealedRef.on('value', (snapshot) => {
+                votesRevealed = snapshot.val() || false;
+                if (votesRevealed) {
                     calculateStats();
-                    broadcast(data, conn.peer);
-                    break;
-                    
-                case 'reset':
-                    votesRevealed = false;
-                    Object.values(participants).forEach(p => p.vote = null);
-                    updateUI();
+                } else {
                     document.getElementById('statsSection').style.display = 'none';
-                    broadcast(data, conn.peer);
-                    break;
-                    
-                case 'state':
-                    participants = data.participants;
-                    votesRevealed = data.revealed;
-                    updateUI();
-                    if (votesRevealed) calculateStats();
-                    break;
-            }
+                }
+                updateCardsState();
+            });
+            
+            updateConnectionStatus('connected', 'Connected to Firebase');
+            createCards();
         }
 
-        function broadcast(message, excludePeer) {
-            Object.values(connections).forEach(conn => {
-                if (conn.peer !== excludePeer && conn.open) {
-                    conn.send(message);
-                }
+        function copyLink() {
+            const link = window.location.href;
+            navigator.clipboard.writeText(link).then(() => {
+                const linkEl = document.getElementById('shareLink');
+                const originalText = linkEl.textContent;
+                linkEl.textContent = 'Copied! ✓';
+                setTimeout(() => {
+                    linkEl.textContent = originalText;
+                }, 2000);
             });
         }
 
@@ -621,8 +564,8 @@
             });
         }
 
-        function selectCard(cardElement, value) {
-            if (votesRevealed) return;
+        async function selectCard(cardElement, value) {
+            if (votesRevealed || !roomRef) return;
             
             document.querySelectorAll('.card').forEach(card => {
                 card.classList.remove('selected');
@@ -634,46 +577,48 @@
             document.getElementById('selectedValue').textContent = value;
             document.getElementById('selectedValue').classList.remove('empty');
             
-            participants[userId].vote = value;
+            // Update vote in Firebase
+            await roomRef.child('participants/' + userId + '/vote').set(value);
+        }
+
+        async function revealAllVotes() {
+            if (!roomRef) return;
+            await roomRef.child('revealed').set(true);
+        }
+
+        async function newRound() {
+            if (!roomRef) return;
             
-            broadcast({
-                type: 'vote',
-                userId: userId,
-                vote: value
+            // Get all participants and reset their votes
+            const snapshot = await roomRef.child('participants').once('value');
+            const participants = snapshot.val() || {};
+            
+            const updates = {};
+            Object.keys(participants).forEach(uid => {
+                updates[`participants/${uid}/vote`] = null;
             });
+            updates['revealed'] = false;
             
-            updateUI();
-        }
-
-        function revealAllVotes() {
-            votesRevealed = true;
-            broadcast({ type: 'reveal' });
-            updateUI();
-            calculateStats();
-        }
-
-        function newRound() {
-            votesRevealed = false;
+            await roomRef.update(updates);
+            
+            // Reset local UI
             myVote = null;
-            
-            Object.values(participants).forEach(p => p.vote = null);
-            
             document.querySelectorAll('.card').forEach(card => {
                 card.classList.remove('selected');
             });
             document.getElementById('selectedValue').textContent = 'Select a card below';
             document.getElementById('selectedValue').classList.add('empty');
             document.getElementById('statsSection').style.display = 'none';
-            
-            broadcast({ type: 'reset' });
-            updateUI();
         }
 
-        function updateUI() {
+        function updateParticipantsUI(participants) {
             const participantsGrid = document.getElementById('participantsGrid');
             participantsGrid.innerHTML = '';
             
-            const participantArray = Object.values(participants);
+            const participantArray = Object.keys(participants).map(id => ({
+                id: id,
+                ...participants[id]
+            }));
             
             participantArray.forEach(participant => {
                 const div = document.createElement('div');
@@ -689,7 +634,7 @@
                 
                 const nameDiv = document.createElement('div');
                 nameDiv.className = 'participant-name';
-                nameDiv.textContent = participant.name;
+                nameDiv.textContent = participant.name + (participant.id === userId ? ' (You)' : '');
                 
                 const voteDiv = document.createElement('div');
                 voteDiv.className = 'participant-vote';
@@ -710,7 +655,22 @@
             document.getElementById('participantCount').textContent = participantArray.length;
         }
 
-        function calculateStats() {
+        function updateCardsState() {
+            document.querySelectorAll('.card').forEach(card => {
+                if (votesRevealed) {
+                    card.classList.add('disabled');
+                } else {
+                    card.classList.remove('disabled');
+                }
+            });
+        }
+
+        async function calculateStats() {
+            if (!roomRef) return;
+            
+            const snapshot = await roomRef.child('participants').once('value');
+            const participants = snapshot.val() || {};
+            
             const numericVotes = Object.values(participants)
                 .map(p => p.vote)
                 .filter(v => v && !isNaN(v))
