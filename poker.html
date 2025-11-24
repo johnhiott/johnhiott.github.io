@@ -463,21 +463,7 @@
             <div class="participants-grid" id="participantsGrid"></div>
         </div>
 
-        <div class="your-card-section">
-            <h2>Your Vote</h2>
-            <div id="selectedValue" class="selected-value empty">
-                Select a card below
-            </div>
-        </div>
-
-        <div class="cards-grid" id="cardsGrid"></div>
-
-        <div class="actions">
-            <button id="revealBtn" class="reveal-btn" onclick="revealAllVotes()" disabled>Reveal All Votes</button>
-            <button id="resetBtn" class="reset-btn" onclick="newRound()" disabled>New Round</button>
-        </div>
-
-        <div class="stats" id="statsSection" style="display: none;">
+                <div class="stats" id="statsSection" style="display: none;">
             <h3>Voting Results</h3>
             <div class="stats-content">
                 <div class="stat-item">
@@ -494,6 +480,22 @@
                 </div>
             </div>
         </div>
+
+        <div class="your-card-section">
+            <h2>Your Vote</h2>
+            <div id="selectedValue" class="selected-value empty">
+                Select a card below
+            </div>
+        </div>
+
+        <div class="cards-grid" id="cardsGrid"></div>
+
+        <div class="actions">
+            <button id="revealBtn" class="reveal-btn" onclick="revealAllVotes()" disabled>Reveal All Votes</button>
+            <button id="resetBtn" class="reset-btn" onclick="newRound()" disabled>New Round</button>
+        </div>
+
+
 
         <!-- Bottom Banner Ad (728x90 or responsive) -->
         <div class="ad-banner bottom">
@@ -546,18 +548,19 @@
         // ============================================
         // REPLACE THIS WITH YOUR FIREBASE CONFIG
         // Get it from: Firebase Console > Project Settings > General > Your apps > SDK setup and configuration
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY_HERE",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
+const firebaseConfig = {
+  apiKey: "AIzaSyBWarz44UAvVHQD0B5AGNmuUrkLjWLgzLs",
+  authDomain: "poker-3f74a.firebaseapp.com",
+  databaseURL: "https://poker-3f74a-default-rtdb.firebaseio.com",
+  projectId: "poker-3f74a",
+  storageBucket: "poker-3f74a.firebasestorage.app",
+  messagingSenderId: "1002846324378",
+  appId: "1:1002846324378:web:47fdb48999e03f17dc0123",
+  measurementId: "G-F2TPLLBDEZ"
+};
         // ============================================
 
-        const cardValues = ['0', '1', '2', '3', '5', '8', '13', '20', '40', '100', '?', '☕'];
+        const cardValues = ['0', '1', '2', '3', '5', '8', '13', '20'];
         
         let roomId = null;
         let userId = null;
