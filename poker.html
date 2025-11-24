@@ -60,6 +60,25 @@
             margin: 10px 0;
         }
 
+        .connection-status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .connection-status.connected {
+            background: #4caf50;
+        }
+
+        .connection-status.connecting {
+            background: #ff9800;
+        }
+
+        .connection-status.disconnected {
+            background: #f44336;
+        }
+
         #joinModal {
             position: fixed;
             top: 0;
@@ -285,7 +304,7 @@
 
         .stats-content {
             display: flex;
-            justify-content: space-around;
+            justify-space-around;
             flex-wrap: wrap;
             gap: 20px;
         }
@@ -341,9 +360,10 @@
         <h1>🎴 Multiplayer Planning Poker</h1>
         
         <div class="session-info">
-            <div class="session-id">Session: <span id="sessionId"></span></div>
-            <div style="font-size: 0.9rem;">Share this page URL with your team</div>
+            <div class="session-id">Room: <span id="sessionId"></span></div>
+            <div style="font-size: 0.9rem;">Share this URL with your team</div>
             <div class="share-link" id="shareLink"></div>
+            <div class="connection-status connecting" id="connectionStatus">Connecting...</div>
         </div>
 
         <div class="participants-section">
@@ -384,36 +404,39 @@
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script>
         const cardValues = ['0', '1', '2', '3', '5', '8', '13', '20', '40', '100', '?', '☕'];
         
-        let sessionId = null;
+        let roomId = null;
         let userId = null;
         let userName = null;
         let myVote = null;
         let votesRevealed = false;
+        let peer = null;
+        let connections = {};
+        let participants = {};
+        let isHost = false;
 
-        // Initialize session
+        // Initialize
         function initSession() {
             const urlParams = new URLSearchParams(window.location.search);
-            sessionId = urlParams.get('session') || generateSessionId();
+            roomId = urlParams.get('room') || generateRoomId();
             
-            // Update URL if no session parameter
-            if (!urlParams.get('session')) {
-                window.history.replaceState({}, '', `?session=${sessionId}`);
+            if (!urlParams.get('room')) {
+                window.history.replaceState({}, '', `?room=${roomId}`);
+                isHost = true;
             }
             
-            document.getElementById('sessionId').textContent = sessionId;
+            document.getElementById('sessionId').textContent = roomId;
             document.getElementById('shareLink').textContent = window.location.href;
             
-            // Generate unique user ID
             userId = 'user_' + Math.random().toString(36).substr(2, 9);
             
-            // Show join modal
             document.getElementById('joinModal').classList.remove('hidden');
         }
 
-        function generateSessionId() {
+        function generateRoomId() {
             return Math.random().toString(36).substr(2, 6).toUpperCase();
         }
 
@@ -428,15 +451,160 @@
             
             document.getElementById('joinModal').classList.add('hidden');
             
-            // Add user to session
-            addParticipant(userId, userName);
-            saveSession();
+            // Initialize PeerJS
+            const peerId = `poker-${roomId}-${userId}`;
+            peer = new Peer(peerId, {
+                config: {
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:global.stun.twilio.com:3478' }
+                    ]
+                }
+            });
+
+            peer.on('open', (id) => {
+                updateConnectionStatus('connected', 'Connected to network');
+                participants[userId] = { id: userId, name: userName, vote: null };
+                updateUI();
+                
+                // Connect to all existing peers in the room
+                discoverPeers();
+                createCards();
+            });
+
+            peer.on('connection', (conn) => {
+                handleConnection(conn);
+            });
+
+            peer.on('error', (err) => {
+                console.error('Peer error:', err);
+                updateConnectionStatus('disconnected', 'Connection error');
+            });
+        }
+
+        function discoverPeers() {
+            // In a real app, you'd use a signaling server
+            // For demo, we'll use the room ID to connect
+            const roomKey = `poker_room_${roomId}`;
             
-            // Start polling for updates
-            setInterval(loadSession, 1000);
+            // Store our peer ID
+            const existingPeers = JSON.parse(localStorage.getItem(roomKey) || '[]');
+            if (!existingPeers.includes(peer.id)) {
+                existingPeers.push(peer.id);
+                localStorage.setItem(roomKey, JSON.stringify(existingPeers));
+            }
             
-            // Create cards
-            createCards();
+            // Connect to existing peers
+            existingPeers.forEach(peerId => {
+                if (peerId !== peer.id) {
+                    connectToPeer(peerId);
+                }
+            });
+            
+            // Clean up old peer IDs periodically
+            setTimeout(() => {
+                const currentPeers = Object.keys(connections).map(id => connections[id].peer);
+                currentPeers.push(peer.id);
+                localStorage.setItem(roomKey, JSON.stringify(currentPeers));
+            }, 2000);
+        }
+
+        function connectToPeer(peerId) {
+            if (connections[peerId]) return;
+            
+            const conn = peer.connect(peerId, { reliable: true });
+            handleConnection(conn);
+        }
+
+        function handleConnection(conn) {
+            connections[conn.peer] = conn;
+            
+            conn.on('open', () => {
+                // Send our participant info
+                conn.send({
+                    type: 'join',
+                    participant: participants[userId]
+                });
+                
+                // Send current state if we're host
+                if (isHost) {
+                    conn.send({
+                        type: 'state',
+                        participants: participants,
+                        revealed: votesRevealed
+                    });
+                }
+            });
+            
+            conn.on('data', (data) => {
+                handleMessage(data, conn);
+            });
+            
+            conn.on('close', () => {
+                const disconnectedId = Object.keys(participants).find(id => 
+                    connections[conn.peer] && participants[id]
+                );
+                if (disconnectedId) {
+                    delete participants[disconnectedId];
+                    updateUI();
+                }
+                delete connections[conn.peer];
+            });
+        }
+
+        function handleMessage(data, conn) {
+            switch(data.type) {
+                case 'join':
+                    participants[data.participant.id] = data.participant;
+                    updateUI();
+                    // Broadcast to others
+                    broadcast(data, conn.peer);
+                    break;
+                    
+                case 'vote':
+                    if (participants[data.userId]) {
+                        participants[data.userId].vote = data.vote;
+                        updateUI();
+                    }
+                    broadcast(data, conn.peer);
+                    break;
+                    
+                case 'reveal':
+                    votesRevealed = true;
+                    updateUI();
+                    calculateStats();
+                    broadcast(data, conn.peer);
+                    break;
+                    
+                case 'reset':
+                    votesRevealed = false;
+                    Object.values(participants).forEach(p => p.vote = null);
+                    updateUI();
+                    document.getElementById('statsSection').style.display = 'none';
+                    broadcast(data, conn.peer);
+                    break;
+                    
+                case 'state':
+                    participants = data.participants;
+                    votesRevealed = data.revealed;
+                    updateUI();
+                    if (votesRevealed) calculateStats();
+                    break;
+            }
+        }
+
+        function broadcast(message, excludePeer) {
+            Object.values(connections).forEach(conn => {
+                if (conn.peer !== excludePeer && conn.open) {
+                    conn.send(message);
+                }
+            });
+        }
+
+        function updateConnectionStatus(status, message) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = `connection-status ${status}`;
+            statusEl.textContent = message;
         }
 
         function createCards() {
@@ -456,45 +624,40 @@
         function selectCard(cardElement, value) {
             if (votesRevealed) return;
             
-            // Remove previous selection
             document.querySelectorAll('.card').forEach(card => {
                 card.classList.remove('selected');
             });
 
-            // Select new card
             cardElement.classList.add('selected');
             myVote = value;
 
-            // Update display
             document.getElementById('selectedValue').textContent = value;
             document.getElementById('selectedValue').classList.remove('empty');
             
-            // Save vote
-            updateMyVote(value);
-            saveSession();
+            participants[userId].vote = value;
+            
+            broadcast({
+                type: 'vote',
+                userId: userId,
+                vote: value
+            });
+            
+            updateUI();
         }
 
         function revealAllVotes() {
             votesRevealed = true;
-            const session = getSession();
-            session.revealed = true;
-            setSession(session);
-            loadSession();
+            broadcast({ type: 'reveal' });
+            updateUI();
             calculateStats();
         }
 
         function newRound() {
-            // Reset session
-            const session = getSession();
-            session.revealed = false;
-            session.participants.forEach(p => {
-                p.vote = null;
-            });
-            setSession(session);
-            
-            // Reset UI
             votesRevealed = false;
             myVote = null;
+            
+            Object.values(participants).forEach(p => p.vote = null);
+            
             document.querySelectorAll('.card').forEach(card => {
                 card.classList.remove('selected');
             });
@@ -502,39 +665,17 @@
             document.getElementById('selectedValue').classList.add('empty');
             document.getElementById('statsSection').style.display = 'none';
             
-            loadSession();
+            broadcast({ type: 'reset' });
+            updateUI();
         }
 
-        function addParticipant(id, name) {
-            const session = getSession();
-            if (!session.participants.find(p => p.id === id)) {
-                session.participants.push({
-                    id: id,
-                    name: name,
-                    vote: null
-                });
-                setSession(session);
-            }
-        }
-
-        function updateMyVote(vote) {
-            const session = getSession();
-            const participant = session.participants.find(p => p.id === userId);
-            if (participant) {
-                participant.vote = vote;
-                setSession(session);
-            }
-        }
-
-        function loadSession() {
-            const session = getSession();
-            votesRevealed = session.revealed || false;
-            
-            // Update participants display
+        function updateUI() {
             const participantsGrid = document.getElementById('participantsGrid');
             participantsGrid.innerHTML = '';
             
-            session.participants.forEach(participant => {
+            const participantArray = Object.values(participants);
+            
+            participantArray.forEach(participant => {
                 const div = document.createElement('div');
                 div.className = 'participant';
                 
@@ -566,20 +707,11 @@
                 participantsGrid.appendChild(div);
             });
             
-            document.getElementById('participantCount').textContent = session.participants.length;
-            
-            // Update my vote if revealed
-            if (votesRevealed) {
-                const myParticipant = session.participants.find(p => p.id === userId);
-                if (myParticipant && myParticipant.vote) {
-                    document.getElementById('selectedValue').textContent = myParticipant.vote;
-                }
-            }
+            document.getElementById('participantCount').textContent = participantArray.length;
         }
 
         function calculateStats() {
-            const session = getSession();
-            const numericVotes = session.participants
+            const numericVotes = Object.values(participants)
                 .map(p => p.vote)
                 .filter(v => v && !isNaN(v))
                 .map(v => parseFloat(v))
@@ -590,18 +722,15 @@
                 return;
             }
             
-            // Calculate average
             const avg = numericVotes.reduce((a, b) => a + b, 0) / numericVotes.length;
             document.getElementById('avgValue').textContent = avg.toFixed(1);
             
-            // Calculate median
             const mid = Math.floor(numericVotes.length / 2);
             const median = numericVotes.length % 2 === 0
                 ? (numericVotes[mid - 1] + numericVotes[mid]) / 2
                 : numericVotes[mid];
             document.getElementById('medianValue').textContent = median;
             
-            // Calculate mode
             const frequency = {};
             let maxFreq = 0;
             let mode = numericVotes[0];
@@ -618,30 +747,6 @@
             document.getElementById('statsSection').style.display = 'block';
         }
 
-        // Session storage functions
-        function getSession() {
-            const key = `poker_session_${sessionId}`;
-            const data = localStorage.getItem(key);
-            if (data) {
-                return JSON.parse(data);
-            }
-            return {
-                id: sessionId,
-                participants: [],
-                revealed: false
-            };
-        }
-
-        function setSession(session) {
-            const key = `poker_session_${sessionId}`;
-            localStorage.setItem(key, JSON.stringify(session));
-        }
-
-        function saveSession() {
-            // Session is saved in real-time by other functions
-        }
-
-        // Initialize on load
         initSession();
     </script>
 </body>
