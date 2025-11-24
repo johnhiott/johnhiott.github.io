@@ -172,6 +172,15 @@
             font-size: 1.5rem;
             font-weight: bold;
             min-height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .participant.revealed .participant-vote {
+            font-size: 2.5rem;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .your-card-section {
@@ -354,6 +363,59 @@
             .participants-grid {
                 grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
             }
+
+            .ad-banner {
+                margin: 10px 0 !important;
+            }
+
+            .ad-banner.top {
+                margin-bottom: 20px !important;
+            }
+        }
+
+        /* Ad Banner Styles */
+        .ad-banner {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 10px;
+            margin: 20px 0;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            min-height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ad-banner.top {
+            margin-bottom: 30px;
+        }
+
+        .ad-banner.bottom {
+            margin-top: 30px;
+        }
+
+        .ad-banner.sidebar {
+            position: fixed;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 160px;
+            min-height: 600px;
+            z-index: 100;
+        }
+
+        .ad-placeholder {
+            color: #999;
+            font-size: 0.9rem;
+            padding: 20px;
+        }
+
+        /* Hide sidebar ad on mobile */
+        @media (max-width: 1400px) {
+            .ad-banner.sidebar {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -368,6 +430,26 @@
 
     <div class="container">
         <h1>🎴 Multiplayer Planning Poker</h1>
+        
+        <!-- Top Banner Ad (728x90 or responsive) -->
+        <div class="ad-banner top">
+            <!-- Google AdSense Ad Code Goes Here -->
+            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX"
+                 crossorigin="anonymous"></script>
+            <!-- Planning Poker Top Banner -->
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-XXXXXXXXXX"
+                 data-ad-slot="YYYYYYYYYY"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>
+                 (adsbygoogle = window.adsbygoogle || []).push({});
+            </script>
+            
+            <!-- Placeholder for testing (remove after adding real ads) -->
+            <div class="ad-placeholder">[ Top Banner Ad - 728x90 ]</div>
+        </div>
         
         <div class="session-info">
             <div class="session-id">Room: <span id="sessionId"></span></div>
@@ -391,8 +473,8 @@
         <div class="cards-grid" id="cardsGrid"></div>
 
         <div class="actions">
-            <button id="revealBtn" class="reveal-btn" onclick="revealAllVotes()">Reveal All Votes</button>
-            <button id="resetBtn" class="reset-btn" onclick="newRound()">New Round</button>
+            <button id="revealBtn" class="reveal-btn" onclick="revealAllVotes()" disabled>Reveal All Votes</button>
+            <button id="resetBtn" class="reset-btn" onclick="newRound()" disabled>New Round</button>
         </div>
 
         <div class="stats" id="statsSection" style="display: none;">
@@ -412,12 +494,48 @@
                 </div>
             </div>
         </div>
+
+        <!-- Bottom Banner Ad (728x90 or responsive) -->
+        <div class="ad-banner bottom">
+            <!-- Google AdSense Ad Code Goes Here -->
+            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX"
+                 crossorigin="anonymous"></script>
+            <!-- Planning Poker Bottom Banner -->
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-XXXXXXXXXX"
+                 data-ad-slot="ZZZZZZZZZZ"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>
+                 (adsbygoogle = window.adsbygoogle || []).push({});
+            </script>
+            
+            <!-- Placeholder for testing (remove after adding real ads) -->
+            <div class="ad-placeholder">[ Bottom Banner Ad - 728x90 ]</div>
+        </div>
     </div>
 
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9193525383304596"
-     crossorigin="anonymous"></script>
+    <!-- Sidebar Ad (160x600 - Desktop only) -->
+    <div class="ad-banner sidebar">
+        <!-- Google AdSense Ad Code Goes Here -->
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX"
+             crossorigin="anonymous"></script>
+        <!-- Planning Poker Sidebar -->
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-XXXXXXXXXX"
+             data-ad-slot="WWWWWWWWWW"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>
+             (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+        
+        <!-- Placeholder for testing (remove after adding real ads) -->
+        <div class="ad-placeholder">[ Sidebar Ad<br>160x600 ]</div>
+    </div>
 
-    
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
@@ -428,16 +546,15 @@
         // ============================================
         // REPLACE THIS WITH YOUR FIREBASE CONFIG
         // Get it from: Firebase Console > Project Settings > General > Your apps > SDK setup and configuration
- const firebaseConfig = {
-    apiKey: "AIzaSyBWarz44UAvVHQD0B5AGNmuUrkLjWLgzLs",
-    authDomain: "poker-3f74a.firebaseapp.com",
-    databaseURL: "https://poker-3f74a-default-rtdb.firebaseio.com",
-    projectId: "poker-3f74a",
-    storageBucket: "poker-3f74a.firebasestorage.app",
-    messagingSenderId: "1002846324378",
-    appId: "1:1002846324378:web:47fdb48999e03f17dc0123",
-    measurementId: "G-F2TPLLBDEZ"
-  };
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY_HERE",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
         // ============================================
 
         const cardValues = ['0', '1', '2', '3', '5', '8', '13', '20', '40', '100', '?', '☕'];
@@ -522,17 +639,30 @@
             });
             
             // Listen for revealed changes
-            revealedRef.on('value', (snapshot) => {
-                votesRevealed = snapshot.val() || false;
+            revealedRef.on('value', async (snapshot) => {
+                const newRevealedState = snapshot.val() || false;
+                console.log('Revealed state changed:', newRevealedState);
+                votesRevealed = newRevealedState;
+                
                 if (votesRevealed) {
                     calculateStats();
                 } else {
                     document.getElementById('statsSection').style.display = 'none';
                 }
                 updateCardsState();
+                
+                // Re-render participants to show revealed votes
+                const participantsSnapshot = await roomRef.child('participants').once('value');
+                const participants = participantsSnapshot.val() || {};
+                updateParticipantsUI(participants);
             });
             
             updateConnectionStatus('connected', 'Connected to Firebase');
+            
+            // Enable action buttons now that we're connected
+            document.getElementById('revealBtn').disabled = false;
+            document.getElementById('resetBtn').disabled = false;
+            
             createCards();
         }
 
@@ -586,8 +716,19 @@
         }
 
         async function revealAllVotes() {
-            if (!roomRef) return;
-            await roomRef.child('revealed').set(true);
+            if (!roomRef) {
+                console.error('Room reference not initialized');
+                alert('Please wait for connection to complete');
+                return;
+            }
+            
+            try {
+                await roomRef.child('revealed').set(true);
+                console.log('Votes revealed successfully');
+            } catch (error) {
+                console.error('Error revealing votes:', error);
+                alert('Error revealing votes. Please try again.');
+            }
         }
 
         async function newRound() {
@@ -624,6 +765,8 @@
                 ...participants[id]
             }));
             
+            console.log('Updating participants UI. Revealed:', votesRevealed, 'Participants:', participantArray);
+            
             participantArray.forEach(participant => {
                 const div = document.createElement('div');
                 div.className = 'participant';
@@ -634,6 +777,7 @@
                 
                 if (votesRevealed && participant.vote) {
                     div.classList.add('revealed');
+                    console.log(`Revealing vote for ${participant.name}: ${participant.vote}`);
                 }
                 
                 const nameDiv = document.createElement('div');
@@ -644,10 +788,13 @@
                 voteDiv.className = 'participant-vote';
                 
                 if (votesRevealed && participant.vote) {
+                    // Show actual vote when revealed
                     voteDiv.textContent = participant.vote;
                 } else if (participant.vote) {
+                    // Show card back emoji when vote exists but not revealed
                     voteDiv.textContent = '🎴';
                 } else {
+                    // Show waiting emoji when no vote yet
                     voteDiv.textContent = '⏳';
                 }
                 
